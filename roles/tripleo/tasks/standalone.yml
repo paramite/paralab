@@ -1,0 +1,69 @@
+---
+
+- name: Ensure workdir exists
+  ansible.builtin.file:
+    path: "{{ standalone_workdir }}"
+    state: directory
+
+- name: Get cloud image for standalone deployments
+  ansible.builtin.get_url:
+    url: "{{ standalone_base_image_url }}"
+    dest: "{{ standalone_workdir }}/{{ standalone_base_image_name }}"
+    checksum: "{{ standalone_base_image_sum }}"
+
+- name: Ensure that libvirt default network is up
+  community.libvirt.virt_net:
+    name: default
+    state: active
+
+- name: VM cleanup
+  block:
+    tasks:
+      - community.libvirt.virt:
+          name: "{{ standalone_vm_name }}"
+          state: destroyed
+      - community.libvirt.virt:
+          name: "{{ standalone_vm_name }}"
+          command: undefine
+      - ansible.builtin.file:
+          path: "{{ standalone_workdir}}/{{ standalone_vm_name }}.qcow2"
+      - ansible.builtin.file:
+          path: "{{ standalone_workdir}}/config.iso"
+
+- name: Create image for VM
+  block:
+    tasks:
+      - ansible.builtin.copy:
+          src: "{{ standalone_workdir }}/{{ standalone_base_image_name }}"
+          dest: "{{ standalone_workdir}}/{{ standalone_vm_name }}.qcow2"
+      - ansible.builtin.shell: |
+          qemu-img resize {{ standalone_workdir}}/{{ standalone_vm_name }}.qcow2 {{ standalone_vm_disk_size }}
+
+- name: Provide image configuration for standalone deployment
+  block:
+    tasks:
+      - ansible.builtin.template:
+          src: triple/cloud-config.yaml.j2
+          dest: "{{ standalone_workdir}}/cloud-config.yaml"
+      - ansible.builtin.shell: |
+          cloud-localds {{ standalone_workdir}}/config.iso {{ standalone_workdir}}/cloud-config.yaml
+
+- name: Prepare VM for standalone deployment
+  ansible.builtin.shell:
+    virt-install  --memory {{ standalone_vm_memory }} \
+                  --vcpus {{ standalone_vm_cpu_count }} \
+                  --name {{ standalone_vm_name }} \
+                  --disk {{ standalone_workdir}}/{{ standalone_vm_name }}.qcow2,device=disk \
+                  --disk {{ standalone_workdir}}/config.iso,device=cdrom \
+                  --os-type Linux \
+                  --os-variant centos-stream9 \
+                  --virt-type kvm \
+                  --graphics none \
+                  --network default \
+                  --import
+
+# TODO: setfact standalone_vm_ip for VM IP value via vmip command
+
+- name: Run standalone deployment
+  shell: |
+    ssh {{ standalone_vm_user }}:{{ standalone_vm_password }}@{{ standalone_vm_ip }} 'sudo /root/deploy_standalone.sh'

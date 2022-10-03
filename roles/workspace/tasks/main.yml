@@ -1,0 +1,79 @@
+---
+
+- name: Deploy user bashrc
+  ansible.builtin.template:
+    src: workspace/bashrc
+    dst: ~/.bashrc
+
+- name: Install tools from RPM packages
+  ansible.builtin.package:
+    name: '{{ item }}'
+    state: present
+  with_items: '{{ rpm_based_tools }}'
+  # TODO: skip if failed just notify
+
+- name: Install tools from GIT
+  block:
+    tasks:
+      - name: "Prepare source code directory for {{ item.name }}"
+        ansible.builtin.file:
+          path: {{ item.path | dirname }}
+          state: directory
+          mode: '0750'
+      - name: "Prepare configuration directory for {{ item.name }}"
+        ansible.builtin.file:
+          path: {{ item.config_destination | dirname }}
+          state: directory
+          mode: '0750'
+        when: item.config_destination != ""
+      - name: "Pull source code of {{ item.name }}"
+        ansible.builtin.git:
+          repo: {{ item.repo }}
+          dest: {{ item.path }}
+          version: {{ item.version }}
+      - name: "Install {{ item.name }} using setuptools"
+        ansible.builtin.shell: |
+          pushd {{ item.path }}
+          python setup.py install
+          popd
+        when: item.install_method == 'python_setuptools'
+      - name: "Provide configuration for {{ item.name }}"
+        ansible.builtin.template:
+          src: "{{ item.config_template }}"
+          dest: "{{ item.config_destination }}"
+  with_items: "{{ git_based_tools }}"
+
+- name: Install tools with scripts
+  became: true
+  became_method: sudo
+  ansible.builtin.shell: |
+    curl -Lo ./{{ item.exec }} {{ item.url }}
+    chmod a+x ./{{ item.exec }}
+    mv ./kind /usr/local/bin/{{ exec }}
+  with_items: "{{ script_based_tools }}"
+
+- name: Make sure libvirt is up and running
+  ansible.builtin.service:
+    name: libvirtd
+    state: started
+    enabled: true
+
+- name: Ensure that libvirt default network is present
+  community.libvirt.virt_net:
+    name: default
+    state: present
+    xml: |
+      <network connections='1'>
+        <name>default</name>
+        <forward mode='nat'>
+          <nat>
+            <port start='1024' end='65535'/>
+          </nat>
+        </forward>
+        <bridge name='virbr0' stp='on' delay='0'/>
+        <ip address='{{ libvirt_default_net_netaddr }}.1' netmask='255.255.255.0'>
+          <dhcp>
+            <range start='{{ libvirt_default_net_netaddr }}.2' end='{{ libvirt_default_net_netaddr }}.254'/>
+          </dhcp>
+        </ip>
+      </network>

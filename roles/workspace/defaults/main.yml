@@ -1,0 +1,28 @@
+---
+
+rpm_based_tools:
+  - ansible
+  - '*bash-completion*'
+  - cloud-utils
+  - git
+  - golang
+  - libvirt
+  - libvirt-client
+  - podman
+  - python3-virtualenv
+  - virt-install
+  - wget
+
+git_based_tools:
+  - name: paratools
+    repo: https://github.com/paramite/paratools.git
+    path: ~/tools/python/paratools
+    version: master
+    install_method: python_setuptools
+    config_template: ""
+    config_destination: ""
+
+script_based_tools:
+  - name: Kind
+    url: https://kind.sigs.k8s.io/dl/v0.15.0/kind-linux-amd64
+    exec: kind

@@ -1,0 +1,87 @@
+---
+
+standalone_workdir: ~/tripleo/standalone
+
+standalone_base_image_url: https://cloud.centos.org/centos/9-stream/x86_64/images/CentOS-Stream-GenericCloud-9-20220919.0.x86_64.qcow2
+standalone_base_image_sum: sha256:https://cloud.centos.org/centos/9-stream/x86_64/images/CentOS-Stream-GenericCloud-9-20220919.0.x86_64.qcow2.SHA256SUM
+standalone_base_image_name: CentOS-Stream-GenericCloud-9-latest.x86_64.qcow2
+
+standalone_vm_name: centos9-standalone
+standalone_vm_disk_size: "200G"
+standalone_vm_cpu_count: 4
+standalone_vm_memory: 16384
+standalone_vm_hostname: standalone
+standalone_vm_domain: localdomain
+standalone_vm_user: stack
+standalone_vm_password: stack
+# It is important to keep the 6 spaces value indentation and the '|2' when changing this value
+standalone_vm_ssh_private_key: |2
+      -----BEGIN RSA PRIVATE KEY-----
+      MIIBxwIBAAJhAKD0YSHy73nUgysO13XsJmd4fHiFyQ+00R7VVu2iV9Qcon2LZS/x
+      1cydPZ4pQpfjEha6WxZ6o8ci/Ea/w0n+0HGPwaxlEG2Z9inNtj3pgFrYcRztfECb
+      1j6HCibZbAzYtwIBIwJgO8h72WjcmvcpZ8OvHSvTwAguO2TkR6mPgHsgSaKy6GJo
+      PUJnaZRWuba/HX0KGyhz19nPzLpzG5f0fYahlMJAyc13FV7K6kMBPXTRR6FxgHEg
+      L0MPC7cdqAwOVNcPY6A7AjEA1bNaIjOzFN2sfZX0j7OMhQuc4zP7r80zaGc5oy6W
+      p58hRAncFKEvnEq2CeL3vtuZAjEAwNBHpbNsBYTRPCHM7rZuG/iBtwp8Rxhc9I5w
+      ixvzMgi+HpGLWzUIBS+P/XhekIjPAjA285rVmEP+DR255Ls65QbgYhJmTzIXQ2T9
+      luLvcmFBC6l35Uc4gTgg4ALsmXLn71MCMGMpSWspEvuGInayTCL+vEjmNBT+FAdO
+      W7D4zCpI43jRS9U06JVOeSc9CDk2lwiA3wIwCTB/6uc8Cq85D9YqpM10FuHjKpnP
+      REPPOyrAspdeOAV+6VKRavstea7+2DZmSUgE
+      -----END RSA PRIVATE KEY-----
+standalone_vm_ssh_public_key: ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAAAgQDCZRPRggTqxvMDQYarxlMt6KPI7WPQOTwVUHsz8rUGs5BhpLK1fCd8HbxiY1/M2R5+QpFjKO5RvdrFvfLLf6DG7JgyEe/8P30Br+wsX/47RTpLZ7/icbUUrHrTao/RlpaGBrYtMvu6PGM0CJeMRj9mEbWdll3qV8+f539Eb70j+w== standalone
+# It is important to keep the 8 spaces value indentation and the '|2' when changing this value
+standalone_vm_ssh_authorized_key: ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQCt1BskB1nfJqGmHfK136EYZXbikaRJNeaoou+SN96z6N0LYQx1B1e+3iEYJZ5aPWDjQL6Gfb2h/A6FBROBZa5+ENaWyV9e3J5N28+drOGyx5Xtk02T0z0EKqOCk8F3oO9yT78ZfJf3cNBpZZvbkLBZc0rmV4RFhBgY+sApYNsn0NvUIy0In4nIMC8VbmQ9TkBixyBwGzlLQn7FPMu9nXbN3FePYKgd4oHrU6QDKZLjklWe8y4Z74eRFps2/e6VsNzCC2wgXTw+ZoEpMJQwcTzbFO+mgU/uWncxaYtfH09eftwhcUIYXkQxXIeYhyhy32mZgvqNKmSZORWWRafkL9DLi58lWAlhZSeiqTOfRkdyXZl0ROsPj+ST9OB0EpUS6fgEqSifjiahvNZpeHU47Dv25wOx4ZKY11lK2mgAfVj/fK7qK8NZUlRwCr6YHG8VT+GNUhoD6RPAUHsY0E5IDAT8s055i2phFCZxEYr5uo+u85APsqd4BJWnnEWIZcd4sMxtb9ijzzLnl6tu1nwzL//gtHeJFangX3Bv6wB8uBQlNg4WQBakG+6IxagdpeIr0ec8pqPU10C7yuuSwwJuLOjayf5M+LwfelHYu9OpVC6oVralia8+Z75O0ZepyhBDrYiMWr4RXkEioetgpBcnv9KY1R2WOVg+GJLHfLwUeXJ4+Q== root@lenovo-p720-rdo-13.tpb.lab.eng.brq.redhat.com
+
+standalone_tripleo_repo_url: https://trunk.rdoproject.org/centos9/component/tripleo/current
+standalone_tripleo_version: wallaby # master
+# It is important to keep the 10 spaces value indentation and the '|2' when changing this value
+standalone_tripleo_resources: |2
+          # disable failing services
+          OS::TripleO::Services::Clustercheck: OS::Heat::None
+          OS::TripleO::Services::ExternalSwiftProxy: OS::Heat::None
+          OS::TripleO::Services::SwiftDispersion: OS::Heat::None
+          OS::TripleO::Services::SwiftProxy: OS::Heat::None
+          OS::TripleO::Services::SwiftRingBuilder: OS::Heat::None
+          OS::TripleO::Services::SwiftStorage: OS::Heat::None
+
+          # STF client side
+          OS::TripleO::Services::CeilometerAgentCentral: /usr/share/openstack-tripleo-heat-templates/deployment/ceilometer/ceilometer-agent-central-container-puppet.yaml
+          OS::TripleO::Services::CeilometerAgentNotification: /usr/share/openstack-tripleo-heat-templates/deployment/ceilometer/ceilometer-agent-notification-container-puppet.yaml
+          OS::TripleO::Services::CeilometerAgentIpmi: /usr/share/openstack-tripleo-heat-templates/deployment/ceilometer/ceilometer-agent-ipmi-container-puppet.yaml
+          OS::TripleO::Services::ComputeCeilometerAgent: /usr/share/openstack-tripleo-heat-templates/deployment/ceilometer/ceilometer-agent-compute-container-puppet.yaml
+          OS::TripleO::Services::Redis: /usr/share/openstack-tripleo-heat-templates/deployment/database/redis-pacemaker-puppet.yaml
+          OS::TripleO::Services::Collectd: /usr/share/openstack-tripleo-heat-templates/deployment/metrics/collectd-container-puppet.yaml
+          OS::TripleO::Services::MetricsQdr: /usr/share/openstack-tripleo-heat-templates/deployment/metrics/qdr-container-puppet.yaml
+# It is important to keep the 10 spaces value indentation and the '|2' when changing this value
+standalone_tripleo_parameters: |2
+          # ----- ceilometer -----
+          CeilometerQdrPublishEvents: true
+          CeilometerQdrPublishMetrics: true
+          NotificationDriver: 'messagingv2'
+          ManagePipeline: true
+          ManageEventPipeline: true
+          # ------ collectd ------
+          CollectdConnectionType: amqp1
+          CollectdEnableSensubility: true
+          CollectdSensubilityLogLevel: DEBUG
+          CollectdSensubilityTransport: amqp1
+          CollectdAmqpInstances:
+            notify:
+              notify: true
+              format: JSON
+              presettle: false
+            telemetry:
+              format: JSON
+              presettle: false
+          # ------ qdrouterd -----
+          MetricsQdrSSLProfiles:
+            - name: sslProfile
+          MetricsQdrConnectors:
+            - host: 192.168.24.1
+              port: 5666
+              role: edge
+              verifyHostname: false
+              sslProfile: sslProfile
+          ExtraConfig:
+            tripleo::profile::base::metrics::qdr::interior_mesh_nodes: ''
+            tripleo::profile::base::metrics::qdr::router_mode: edge

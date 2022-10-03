@@ -1,0 +1,91 @@
+#cloud-config
+
+preserve_hostname: false
+hostname: {{ standalone_vm_hostname }}
+fqdn: {{ standalone_vm_hostname}}.{{ standalone_vm_domain }}
+prefer_fqdn_over_hostname: true
+
+ssh_keys:
+  rsa_private: |
+{{ standalone_vm_ssh_private_key }}
+  rsa_public: {{ standalone_vm_ssh_public_key }}
+
+users:
+  - name: {{ standalone_vm_user }}
+    groups: wheel
+    lock_passwd: false
+    passwd: {{ standalone_vm_password | password_hash('sha512', 'saltedherring') }}
+    shell: /bin/bash
+    sudo: ['ALL=(ALL) NOPASSWD:ALL']
+    ssh-authorized-keys:
+      - {{ standalone_vm_ssh_authorized_key }}
+
+write_files:
+  - path: /etc/yum.repos.d/tripleo-repos.repo
+    permissions: "0666"
+    content: |
+      [tripleo-repos]
+      name=tripleo-repos
+      baseurl={{ standalone_triple_repo_url }}
+      enabled=1
+      gpgcheck=0
+  - path: /standalone/bashrc
+    permissions: "0600"
+    content: |
+      export OOO_IP=$(ip route get {{ libvirt_default_net_netaddr }}.1 | head -1 | cut -d' ' -f5)
+      export OOO_NETMASK=$(ip route | grep $OOO_IP | sed -E 's!.*/([[:digit:]]+) dev.*!\1!')
+      export OOO_GATEWAY=$(ip route | grep default | sed -E 's/.*via (.*) dev.*/\1/' | head -n 1)
+      export OOO_INTERFACE=$(ip route | grep $OOO_IP | sed -E 's!.* dev (.*) proto.*!\1!')
+  - path: /standalone/environment_template.yaml
+    permissions: "0644"
+    content: |
+      resource_registry:
+{{ standalone_tripleo_resources }}
+      parameter_defaults:
+        CloudName: $OOO_IP
+        ControlPlaneStaticRoutes:
+          - ip_netmask: 0.0.0.0/0
+            next_hop: $OOO_GATEWAY
+            default: true
+        Debug: true
+        DeploymentUser: {{ standalone_vm_user }}
+        DnsServers:
+          - {{ libvirt_default_net_netaddr }}.1
+        KernelIpNonLocalBind: 1
+        DockerInsecureRegistryAddress:
+          - $OOO_IP:8787
+        NeutronPublicInterface: $OOO_INTERFACE
+        CloudDomain: {{ standalone_vm_domain }}
+        NeutronDnsDomain: {{ standalone_vm_domain }}
+        NeutronBridgeMappings: datacenter:br-ctlplane
+        NeutronPhysicalBridge: br-ctlplane
+        #NeutronEnableForceMetadata: true
+        StandaloneEnableRoutedNetworks: false
+        StandaloneHomeDir: /home/{{ standalone_vm_user}}
+        InterfaceLocalMtu: 1500
+        NovaComputeLibvirtType: qemu
+        NtpServer:
+          - clock.redhat.com
+        # user parameters
+{{ standalone_tripleo_parameters }}
+  - path: /standalone/deploy.sh
+    permissions: "0750"
+    content: |
+      openstack tripleo deploy --templates --local-ip=$OOO_IP/$OOO_NETMASK \
+        -e /usr/share/openstack-tripleo-heat-templates/environments/standalone/standalone-tripleo.yaml \
+        -r /usr/share/openstack-tripleo-heat-templates/roles/Standalone.yaml \
+        -e /root/containers-prepare-parameters.yaml \
+        -e /root/standalone-parameters.yaml \
+        --standalone-role Standalone
+
+runcmd:
+  - mv /standalone/bashrc /root/.bashrc
+  - dnf install -y python3-tripleo-repos
+  - tripleo-repos -b {{ standalone_tripleo_version }} -d centos9 current
+  - dnf install -y python3-tripleoclient
+  - openstack tripleo container image prepare default --output-env-file /root/containers-prepare-parameters.yaml
+  - "source /root/.bashrc && envsubst < /standalone/environment_template.yaml > /root/standalone-parameters.yaml"
+  - "source /root/.bashrc && envsubst < /standalone/deploy.sh > /root/standalone_deploy.sh"
+  - chmod a+x /root/standalone_deploy.sh
+  - cp -R /root/.ssh /home/{{ standalone_vm_user }}/.ssh
+  - chown -R {{ standalone_vm_user }}:{{ standalone_vm_user }} /home/{{ standalone_vm_user}}
